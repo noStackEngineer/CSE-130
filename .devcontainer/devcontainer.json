@@ -1,0 +1,14 @@
+{
+  "name": "Course Environment",
+  "dockerComposeFile": ["../docker-compose.yml"],
+  "service": "dev",
+  "workspaceFolder": "/workspace",
+  "settings": {
+    "terminal.integrated.defaultProfile.linux": "bash"
+  },
+  "extensions": [
+    "ms-python.python",
+    "ms-vscode.cpptools"
+  ],
+  "remoteUser": "root"
+}

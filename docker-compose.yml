@@ -1,0 +1,15 @@
+# docker-compose.yml
+version: "3.9"
+
+services:
+  dev:
+    build: .
+    image: course-env:24.04
+    container_name: course-env
+    stdin_open: true
+    tty: true
+    volumes:
+      - .:/workspace
+    working_dir: /workspace
+    cpus: 4         # Limit to 4 CPUs (adjust if desired)
+    mem_limit: 4g   # Limit memory (adjust if desired)
