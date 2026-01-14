@@ -1,0 +1,41 @@
+
+
+1.  Makefile
+-----------------------------------
+all	- produces hello binary
+clean	- removes .o and binary files
+hello	- produces hello binary
+
+- use clang: CC=clang
+- use flags: CFLAGS= -Wall -Wextra -Werror -pedantic
+
+
+
+2. Source Files
+-----------------------------------
+
+hello.c:
+- write "Hello World!" to stdout when invoked
+- PROHIBITED:
+	fwrite(), fread()
+	put (fptuc, putc, putc unlocked,
+		putchar, putchar unlocked, and putw)
+	get (fgetc, getc,getc unlocked, getchar,
+		getchar unlocked, and getw)
+	functions like system(3), that allow you to
+		execute external programs.
+
+attestation.txt:
+- "I successfully created and am using an Ubuntu 24.04 virtual machine."
+
+None of: BINARY, OBJECT (.o)
+
+
+
+3. Clang-Format
+-------------------------------------
+all .c and .h files are formatted by .clang-format file
+
+Run the following command:
+clang-format -i -style=file <filename>
+clang-format -i <filename>
