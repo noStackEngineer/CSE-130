@@ -4,5 +4,6 @@ all : hello
 hello : hello.c
 	clang -Wall -Wextra -Werror -pedantic hello.c -o hello
 
-# .PHONY: clean
-# clean:
+.PHONY: clean
+clean:
+	rm -f hello
