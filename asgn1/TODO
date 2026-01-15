@@ -1,0 +1,75 @@
+Where I left off:
+-----------------
+
+
+wednesday	9pm
+- working on handling get
+we want to create a loop to read from the file we've opened and write to stdout
+- the file descriptors should be 3 and 1, respectively
+
+currently, i'm conditionally calling different functions to handle the different commands
+- would it make more sense for them to both share the same logic, but certain
+	aspects of their state would distinguish between which command is being
+	carried out? i don't think so, since they both need to write but in different ways
+
+
+
+
+
+
+
+
+
+
+------------------------------------------------------
+1. Memory Commands
+------------------------------------
+commands will be recieved as input from stdin
+
+
+get()
+-----
+- valid command formatted as:
+	"get\n<file_name>\n"
+- indicates that:
+	program should output content of <file_name>
+
+- if <file_name> in current directory:
+	write content of file to stdout and exit with 0
+
+set()
+-----
+- valid command formatted as:
+	"set\n<file_name>\n<content_length>\n<content>"
+- indicates that:
+	program should assign <content_length> bytes from
+	<content> to <file_name> in current directory
+
+- if valid <file_name>:
+	assign content of <file_name> to <content_length>
+	bytes from <content> (overwriting <file_name>)
+	and exit with 0
+
+
+2. Invalid Commands
+----------------------------------
+output "Invalid Command\n" to stderr and exit with 1
+
+invalid commands include:
+- The command does not start with either get or set
+	(these are case-sensitive)
+- The command starts with get or set but:
+	- stdin was closed before the user provided a location.
+	- the location is not a valid filename
+- The command is a get command with a valid location but:
+	- there is no file located at the location.
+	- includes additional input ( “get\nfoo.txt\nExtraStuff”)
+
+
+
+
+
+
+
+
+
