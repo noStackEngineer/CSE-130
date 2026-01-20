@@ -15,11 +15,12 @@ typedef enum {
 } command_t;
 command_t cmd = CMD_NONE;
 
+// Designate characters to use for delimiter in command (for strtok)
 const char *delims = "\n";
 
 void invalid_command(void);
-void handle_get(char* token);
-void handle_set(char* token);
+void handle_get(char* token, char* buffer);
+void handle_set(char* token, char* buffer);
 
 int main(void) {
 	// Establish our buffer
@@ -28,9 +29,9 @@ int main(void) {
 	// will hold text file path
 	//char path[PATH_MAX];
 	
-	// Designate characters to use for delimiter in command (for strtokk)
 
-	// Fill the buffer with command
+	// Fill the buffer with stdin stream
+	// 	should only contain valid get/set command
 	ssize_t bytes_read = read(0, buffer, BUFFER_SIZE);
 
 	// Check for error or empty read
@@ -45,28 +46,32 @@ int main(void) {
 	//printf("%zi bytes were successfully read!\n", bytes_read);
 		
 	// Grab first token of command
-	char *first_token = strtok(buffer, delims);
-	//printf("command token read: %s\n", first_token);
+	char *cmd_token = strtok(buffer, delims);
+	//printf("command token read: %s\n", cmd_token);
 		
 	// Ensure command is either get or set
-	if (strcmp(first_token, "get") == 0) {
+	if (strcmp(cmd_token, "get") == 0) {
     		cmd = CMD_GET;
-	} else if (strcmp(first_token, "set") == 0) {
+	} else if (strcmp(cmd_token, "set") == 0) {
     		cmd = CMD_SET;
 	} else {
 		invalid_command();
 	}
 		
 	// Grab second token of command: file location/name
-	char *second_token = strtok(NULL, delims);
-	//printf("file_location token read: %s\n", second_token);
-
+	char *location_token = strtok(NULL, delims);
+	
+	if (!location_token) { invalid_command(); }
+	
 	// Ensure the file name is valid
-	if (strlen(second_token) >= PATH_MAX) { invalid_command(); }
+	if (strlen(location_token) >= PATH_MAX) { invalid_command(); }
+
+
+//	printf("HERE\n");
 
 	switch (cmd) {
-	case CMD_GET:  handle_get(second_token); break;
-	case CMD_SET:  handle_set(second_token); break;
+	case CMD_GET:  handle_get(location_token, buffer); break;
+	case CMD_SET:  handle_set(location_token, buffer); break;
 	default:       invalid_command();
 	}
 
@@ -75,25 +80,53 @@ int main(void) {
 }
 
 
-void handle_get(char* token){
+void handle_get(char* token, char* buffer){
 	// ensure there are no extra tokens in given command	
 	char *extra_tokens = strtok(NULL, delims);
 	//printf("Extra token: %s\n", extra_tokens ? extra_tokens : "(none)");
 	if (extra_tokens) { invalid_command(); }
 
-	int read_fd = open(token, O_RDONLY, 0);
+	// open file in read only mode
+	int read_fd = open(token, O_RDONLY);
 	//printf("Open()'s output: %i\n", read_fd);
+	// If file doesn't exit, exit
 	if (read_fd < 0) { invalid_command(); }
 	//printf("Proper Command!\n");
 	
 	// Loop until we've read and written all of the text
 	while (1) {
-		return;
+		ssize_t bytes_read = read(read_fd, buffer, BUFFER_SIZE);
+		
+		// Check for error or empty read
+		if (bytes_read < 0) {
+			fprintf(stderr, "call to read() returned error\n");
+			exit(1);
+		}
+		if (bytes_read == 0) {
+			printf("no bytes to read\n");
+			break;
+		}
+
+		char *p = buffer;
+		ssize_t bytes_to_write = bytes_read;
+
+		while(bytes_to_write > 0) {
+			ssize_t bytes_written = write(1, p, bytes_to_write);
+
+			if(bytes_written < 0) {
+				fprintf(stderr, "call to write() returned error\n");
+				exit(1);
+			}
+
+			p += bytes_written;
+			bytes_to_write -= bytes_written;
+		}
 	}
 }
 
-void handle_set(char* token){
-	printf("%s", token);
+void handle_set(char* token, char* buffer){
+	printf("%s\n", token);
+	if(!buffer) { printf("wtf\n"); }
 	return;
 }
 
@@ -101,3 +134,21 @@ void invalid_command(void) {
 	fprintf(stderr, "Invalid Command\n");
 	exit(1);
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
