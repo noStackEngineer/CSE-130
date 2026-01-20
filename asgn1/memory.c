@@ -19,19 +19,13 @@ command_t cmd = CMD_NONE;
 const char *delims = "\n";
 
 void invalid_command(void);
-void handle_get(char* token, char* buffer);
-void handle_set(char* token, char* buffer);
+void handle_get(char* location_token, char* buffer);
+void handle_set(char* location_token, char* buffer);
 
 int main(void) {
-	// Establish our buffer
 	char buffer[BUFFER_SIZE];
 
-	// will hold text file path
-	//char path[PATH_MAX];
-	
-
-	// Fill the buffer with stdin stream
-	// 	should only contain valid get/set command
+	// Fill buffer with stdin stream
 	ssize_t bytes_read = read(0, buffer, BUFFER_SIZE);
 
 	// Check for error or empty read
@@ -68,8 +62,7 @@ int main(void) {
 	// Ensure the file name is valid
 	if (strlen(location_token) >= PATH_MAX) { invalid_command(); }
 
-
-//	printf("HERE\n");
+	//printf("HERE\n");
 
 	switch (cmd) {
 	case CMD_GET:  handle_get(location_token, buffer); break;
@@ -82,14 +75,14 @@ int main(void) {
 }
 
 
-void handle_get(char* token, char* buffer){
+void handle_get(char* location_token, char* buffer){
 	// ensure there are no extra tokens in given command	
 	char *extra_tokens = strtok(NULL, delims);
 	//printf("Extra token: %s\n", extra_tokens ? extra_tokens : "(none)");
 	if (extra_tokens) { invalid_command(); }
 
 	// open file in read only mode
-	int read_fd = open(token, O_RDONLY);
+	int read_fd = open(location_token, O_RDONLY);
 	//printf("Open()'s output: %i\n", read_fd);
 	// If file doesn't exit, exit
 	if (read_fd < 0) { invalid_command(); }
@@ -116,6 +109,7 @@ void handle_get(char* token, char* buffer){
 			ssize_t bytes_written = write(1, p, bytes_to_write);
 
 			if(bytes_written < 0) {
+				close(read_fd);
 				fprintf(stderr, "call to write() returned error\n");
 				exit(1);
 			}
@@ -126,10 +120,21 @@ void handle_get(char* token, char* buffer){
 	}
 }
 
-void handle_set(char* token, char* buffer){
-	printf("%s\n", token);
-	if(!buffer) { printf("wtf\n"); }
-	return;
+void handle_set(char* location_token, char* buffer){
+	char* length_token = strtok(NULL, delims);
+	if (!length_token) { printf("no length"); invalid_command(); }
+
+	char* content_token = strtok(NULL, delims);
+	if (!content_token) { printf("no content"); invalid_command(); }
+	
+	int write_fd = open(location_token, O_WRONLY|O_CREAT|O_TRUNC);
+	if (write_fd < 0) { invalid_command(); }
+
+	while(1) {
+		if (buffer) { printf("Buffer[0]: %c", buffer[0]); }
+		printf("good so far!\n");
+		exit(0);
+	}
 }
 
 void invalid_command(void) {
