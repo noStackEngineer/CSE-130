@@ -61,6 +61,8 @@ int main(void) {
 	// Grab second token of command: file location/name
 	char *location_token = strtok(NULL, delims);
 	
+	//printf("location token read: %s\n", location_token);
+	//printf("end of token read: %c\n", buffer[bytes_read-1]);
 	if (!location_token) { invalid_command(); }
 	
 	// Ensure the file name is valid
@@ -103,7 +105,7 @@ void handle_get(char* token, char* buffer){
 			exit(1);
 		}
 		if (bytes_read == 0) {
-			printf("no bytes to read\n");
+			//printf("no bytes to read\n");
 			break;
 		}
 
