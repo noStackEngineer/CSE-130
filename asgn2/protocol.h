@@ -1,7 +1,7 @@
 #pragma once
 
 /**
- *  Regular expressions for the fileds of a request line.
+ *  Regular expressions for the fields of a request line.
  *
  *  The expressions *do not* include capture groups, which you might want to add
  *  by surrounding them with '(' and ')'. They also are independent, which you
