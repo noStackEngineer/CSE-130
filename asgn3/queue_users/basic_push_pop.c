@@ -23,6 +23,7 @@ int main(int argc, char **argv) {
   queue_pop(q, (void **)&r);
   if (r != 1) {
     // if not, then we failed
+    printf("expected to pop 1, but popped %lu\n", r);
     return 1;
   }
 
@@ -33,6 +34,7 @@ int main(int argc, char **argv) {
   queue_pop(q, (void **)&r);
   if (r != 0) {
     // if not, then we failed
+    printf("expected to pop 0, but popped %lu\n", r);
     return 1;
   }
 
@@ -46,10 +48,12 @@ int main(int argc, char **argv) {
     queue_pop(q, (void **)&r);
     if (r != i) {
       // if not, then we failed
+      printf("expected to pop %lu, but popped %lu\n", i, r);
       return 1;
     }
   }
 
   queue_delete(&q);
+  printf("success!\n");
   return 0;
 }

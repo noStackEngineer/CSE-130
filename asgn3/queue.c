@@ -1,60 +1,81 @@
 /**
- * @File queue.h
+ * @File queue.c
  *
- * The header file that you need to implement for assignment 3.
+ * The implementation file needed to implement for assignment 3.
  *
- * @author Andi Quinn
+ * @author Anthony Reyna
  */
 
-#pragma once
-
+#include "queue.h"
+#include <stdlib.h>
+#include <pthread.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <sys/types.h>
 
-/** @struct queue_t
- *
- *  @brief This typedef renames the struct queue.  Your `c` file
- *  should define the variables that you need for your queue.
- */
-typedef struct queue queue_t;
+// typedef struct queue queue_t;
+struct queue {
+    void **buffer;      // ptr to bounded buffer of void *'s
+    size_t capacity;       // max size of the queue
 
-/** @brief Dynamically allocates and initializes a new queue with a
- *         maximum size, size
- *
- *  @param size the maximum size of the queue
- *
- *  @return a pointer to a new queue_t
- */
-queue_t *queue_new(int size);
+    size_t current_size;   // number of elements currently in queue
+    size_t head;           // index of front of queue
+    size_t tail;           // index of back of queue
+};
 
-/** @brief Delete your queue and free all of its memory.
- *
- *  @param q the queue to be deleted.  Note, you should assign the
- *  passed in pointer to NULL when returning (i.e., you should set
- *  *q = NULL after deallocation).
- *
- */
-void queue_delete(queue_t **q);
+queue_t *queue_new(int size) {
+    // malloc queue container itself
+    queue_t *new_q = malloc(sizeof(queue_t));
 
-/** @brief push an element onto a queue
- *
- *  @param q the queue to push an element into.
- *
- *  @param elem th element to add to the queue
- *
- *  @return A bool indicating success or failure.  Note, the function
- *          should succeed unless the q parameter is NULL.
- */
-bool queue_push(queue_t *q, void *elem);
+    // malloc bounded buffer
+    new_q->buffer = malloc(size * sizeof(void *));
+    new_q->capacity = (size_t) size;
 
-/** @brief pop an element from a queue.
- *
- *  @param q the queue to pop an element from.
- *
- *  @param elem a place to assign the poped element.
- *
- *  @return A bool indicating success or failure.  Note, the function
- *          should succeed unless the q parameter is NULL.
- */
-bool queue_pop(queue_t *q, void **elem);
+    new_q->tail = 0;
+    new_q->head = 0;
+    new_q->current_size = 0;
+
+    return new_q;
+}
+
+void queue_delete(queue_t **q){
+    if (q == NULL || *q == NULL) { return; }
+
+    free((*q)->buffer);
+    free(*q);
+    *q = NULL;
+
+    return;
+}
+
+bool queue_push(queue_t *q, void *elem) {
+    if (q == NULL) { return false; }
+
+    // TODO :: different check? when back == front?
+    if (q->current_size < q->capacity) {
+        // push element onto queue
+        q->buffer[q->tail] = elem;
+        // increment end index (circular)
+        q->tail = (q->tail + 1) % q->capacity;
+        q->current_size++;
+    }
+    else { }    // BLOCK: wait until there's space}
+
+    return true;
+}
+
+
+bool queue_pop(queue_t *q, void **elem) {
+    if (q == NULL) { return false; }
+
+    if (q->current_size > 0) {
+        // pop element from queue
+        *elem = q->buffer[q->head];
+        // increment front index (circular)
+        q->head = (q->head + 1) % q->capacity;
+        q->current_size--;
+    }
+    else { }    // BLOCK: wait until there's an element
+
+    return true;
+}
