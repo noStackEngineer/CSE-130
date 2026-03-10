@@ -8,6 +8,7 @@
 #include "response.h"
 #include "queue.h"
 #include "rwlock.h"
+#include "lockmap.h"
 
 #include <pthread.h>
 #include <err.h>
@@ -22,7 +23,10 @@
 #include <sys/stat.h>
 
 #define QUEUE_SIZE  64
-rwlock_t *RW_LOCK;
+#define LOCKMAP_SIZE  1024
+lockmap_t *lockmap;   //hashmap of rw_lock's
+pthread_mutex_t log_mutex;
+//rwlock_t *RW_LOCK;
 
 void handle_connection(int);
 
@@ -36,7 +40,7 @@ void handle_unknown(conn_t *conn);
 int main(int argc, char **argv) {
   size_t num_of_threads = 4;   // default
 
-  RW_LOCK = rwlock_new(WRITERS, 0);
+  //RW_LOCK = rwlock_new(WRITERS, 0);
 
   // Handle user designating size of thread pool
   int opt;
@@ -100,6 +104,16 @@ int main(int argc, char **argv) {
     }
   }
 
+  // create hashmap of rw_lock's
+  lockmap = lockmap_create(LOCKMAP_SIZE);
+  if (lockmap == NULL) {
+    fprintf(stderr, "Failed to create lockmap\n");
+    exit(1);
+  }
+
+  // init mutex for the Audit Log
+  pthread_mutex_init(&log_mutex, NULL);
+
   // Dispatcher thread places connections in the queue for worker threads to handle
   while (1) {
     int connfd = ls_accept(sock);
@@ -119,10 +133,11 @@ int main(int argc, char **argv) {
 
   // Clean and exit
   queue_delete(&server_queue);
-  rwlock_delete(&RW_LOCK);
+//  rwlock_delete(&RW_LOCK);
   // TODO :: server_queue = NULL ?
   ls_delete(&sock);
   free(workers);
+  lockmap_destroy(lockmap);
 
   return EXIT_SUCCESS;
 }
@@ -185,6 +200,9 @@ void handle_put(conn_t *conn) {
 
   char *uri = conn_get_uri(conn);
 
+  // Entering critical section w.r.t. URI, so obtain lock
+  rwlock_t *rwlock = lockmap_get_lock(lockmap, uri);
+  writer_lock(rwlock);
   // Check if file already exists before opening it.
   bool existed = access(uri, F_OK) == 0;
 
@@ -205,6 +223,8 @@ void handle_put(conn_t *conn) {
   /* fd is valid */
   // receive the file
   res = conn_recv_file(conn, fd); // conn --> fd, NULL return is good
+  close(fd);
+  writer_unlock(rwlock);
 
   // check to see if it was OK.
   if (res == NULL) {
@@ -215,8 +235,6 @@ void handle_put(conn_t *conn) {
     }
   }
 
-  close(fd);
-
 out:
   // Build message for audit log entry
   code = response_get_code(res);
@@ -224,9 +242,9 @@ out:
   snprintf(log_msg, sizeof(log_msg), "%s,%s,%u,%s\n", "PUT", uri, code, req_id);
 
   // write to audit log with lock
-  writer_lock(RW_LOCK);
+  pthread_mutex_lock(&log_mutex);
   fprintf(stderr, "%s", log_msg);
-  writer_unlock(RW_LOCK);
+  pthread_mutex_unlock(&log_mutex);
   conn_send_response(conn, res);
 }
 
@@ -240,10 +258,14 @@ void handle_get(conn_t *conn) {
 
   char *uri = conn_get_uri(conn);
 
+  // Entering critical section w.r.t. URI, so obtain lock
+  rwlock_t *rwlock = lockmap_get_lock(lockmap, uri);
+  reader_lock(rwlock);
   // Open the file
   int fd = open(uri, O_RDONLY);
 
   if (fd < 0) {
+    reader_unlock(rwlock);
     if (errno == ENOENT) {
         res = &RESPONSE_NOT_FOUND;
     } else if (errno == EACCES) {
@@ -260,12 +282,14 @@ void handle_get(conn_t *conn) {
   if (fstat(fd, &st) < 0) {
       res = &RESPONSE_INTERNAL_SERVER_ERROR;
       close(fd);
+      reader_unlock(rwlock);
       goto out;
   }
 
   if (!S_ISREG(st.st_mode)) {
       res = &RESPONSE_FORBIDDEN;
       close(fd);
+      reader_unlock(rwlock);
       goto out;
   }
 
@@ -273,6 +297,7 @@ void handle_get(conn_t *conn) {
   // send the file
   res = conn_send_file(conn, fd, st.st_size);
   close(fd);
+  reader_unlock(rwlock);
 
   if (res == NULL) {
     res = &RESPONSE_OK;
@@ -286,9 +311,9 @@ out:
   snprintf(log_msg, sizeof(log_msg), "%s,%s,%u,%s\n", "GET", uri, code, req_id);
 
   // write to audit log with lock
-  writer_lock(RW_LOCK);
+  pthread_mutex_lock(&log_mutex);
   fprintf(stderr, "%s", log_msg);
-  writer_unlock(RW_LOCK);
+  pthread_mutex_unlock(&log_mutex);
 
   if (!file_sent) {
     conn_send_response(conn, res);

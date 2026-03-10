@@ -2,4 +2,4 @@
 
 set -euo pipefail
 
-python3 -m autograder.run.submit httpserver.c Makefile README.md
+python3 -m autograder.run.submit httpserver.c lockmap.h lockmap.c Makefile README.md
