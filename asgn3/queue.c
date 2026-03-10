@@ -14,12 +14,12 @@
 #include <sys/types.h>
 
 struct queue {
-    void **buffer;          // ptr to bounded buffer of void *'s
-    size_t capacity;        // max size of the queue
+    void **buffer; // ptr to bounded buffer of void *'s
+    size_t capacity; // max size of the queue
 
-    size_t current_size;   // number of elements currently in queue
-    size_t head;           // index of front of queue
-    size_t tail;           // index of back of queue
+    size_t current_size; // number of elements currently in queue
+    size_t head; // index of front of queue
+    size_t tail; // index of back of queue
 
     pthread_mutex_t mutex;
     pthread_cond_t not_empty;
@@ -27,11 +27,15 @@ struct queue {
 };
 
 queue_t *queue_new(int size) {
-    if (size <= 0) { return NULL; }
+    if (size <= 0) {
+        return NULL;
+    }
 
     // malloc queue container itself
     queue_t *new_q = malloc(sizeof(*new_q));
-    if (!new_q) { return NULL; }
+    if (!new_q) {
+        return NULL;
+    }
 
     // malloc bounded buffer
     new_q->buffer = malloc(size * sizeof(void *));
@@ -52,8 +56,10 @@ queue_t *queue_new(int size) {
     return new_q;
 }
 
-void queue_delete(queue_t **q){
-    if (q == NULL || *q == NULL) { return; }
+void queue_delete(queue_t **q) {
+    if (q == NULL || *q == NULL) {
+        return;
+    }
 
     pthread_mutex_destroy(&(*q)->mutex);
 
@@ -65,7 +71,9 @@ void queue_delete(queue_t **q){
 }
 
 bool queue_push(queue_t *q, void *elem) {
-    if (!q) { return false; }
+    if (!q) {
+        return false;
+    }
 
     // Entering critical section
     pthread_mutex_lock(&q->mutex);
@@ -84,7 +92,7 @@ bool queue_push(queue_t *q, void *elem) {
 
     // Since element was pushed, signal that queue is not_empty
     pthread_cond_signal(&q->not_empty);
-    
+
     // Finished with critical section
     pthread_mutex_unlock(&q->mutex);
 
@@ -92,7 +100,9 @@ bool queue_push(queue_t *q, void *elem) {
 }
 
 bool queue_pop(queue_t *q, void **elem) {
-    if (q == NULL) { return false; }
+    if (q == NULL) {
+        return false;
+    }
 
     // Entering critical section
     pthread_mutex_lock(&q->mutex);
