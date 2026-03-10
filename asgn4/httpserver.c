@@ -200,39 +200,44 @@ void handle_put(conn_t *conn) {
 
   char *uri = conn_get_uri(conn);
 
-  // Entering critical section w.r.t. URI, so obtain lock
-  rwlock_t *rwlock = lockmap_get_lock(lockmap, uri);
-  writer_lock(rwlock);
-  // Check if file already exists before opening it.
-  bool existed = access(uri, F_OK) == 0;
-
-  // Open the file
-  int fd = open(uri, O_CREAT | O_WRONLY | O_TRUNC, 0600);
-
-  if (fd < 0) {
-    // printf("%s: %d", uri, errno);
-    if (errno == EACCES || errno == EISDIR || errno == ENOENT) {
-      res = &RESPONSE_FORBIDDEN;
-      goto out;
-    } else {
-      res = &RESPONSE_INTERNAL_SERVER_ERROR;
-      goto out;
-    }
+  // Receive body into a temp file WITHOUT holding any lock.
+  // prevents blocking other writers while waiting for slow/paused clients.
+  char tempname[] = ".tmp_XXXXXX";
+  int tempfd = mkstemp(tempname);
+  if (tempfd < 0) {
+    res = &RESPONSE_INTERNAL_SERVER_ERROR;
+    goto out;
   }
 
-  /* fd is valid */
-  // receive the file
-  res = conn_recv_file(conn, fd); // conn --> fd, NULL return is good
-  close(fd);
-  writer_unlock(rwlock);
+  res = conn_recv_file(conn, tempfd);
+  close(tempfd);
 
-  // check to see if it was OK.
-  if (res == NULL) {
-    if (existed) {
-      res = &RESPONSE_OK;
-    } else {
-      res = &RESPONSE_CREATED;
+  if (res != NULL) {
+    // Error receiving body (e.g., bad request)
+    unlink(tempname);
+    goto out;
+  }
+
+  // rename temp file to target
+  {
+    rwlock_t *rwlock = lockmap_get_lock(lockmap, uri);
+    writer_lock(rwlock);
+
+    bool existed = access(uri, F_OK) == 0;
+
+    if (rename(tempname, uri) != 0) {
+      writer_unlock(rwlock);
+      unlink(tempname);
+      if (errno == EACCES || errno == EISDIR || errno == ENOENT) {
+        res = &RESPONSE_FORBIDDEN;
+      } else {
+        res = &RESPONSE_INTERNAL_SERVER_ERROR;
+      }
+      goto out;
     }
+
+    writer_unlock(rwlock);
+    res = existed ? &RESPONSE_OK : &RESPONSE_CREATED;
   }
 
 out:
